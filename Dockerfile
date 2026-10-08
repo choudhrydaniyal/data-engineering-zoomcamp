@@ -1,22 +1,23 @@
 # Start with slim Python 3.13 image
 FROM python:3.13-slim
 
-# Copy uv binary from official uv image (multi-stage build pattern)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
+# Copy uv binary from official uv image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Set working directory
 WORKDIR /app
 
-# Add virtual environment to PATH so we can use installed packages
+# Add virtual environment to PATH so installed executables work directly
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Copy dependency files first (better layer caching)
-COPY "pyproject.toml" "uv.lock" ".python-version" ./
-# Install dependencies from lock file (ensures reproducible builds)
-RUN uv sync --locked --no-dev
+# Copy dependency files first (for Docker layer caching)
+COPY pyproject.toml uv.lock .python-version ./
+
+# Install dependencies into virtual environment (frozen sync, no dev dependencies)
+RUN uv sync --frozen --no-dev
 
 # Copy application code
 COPY ingest_data.py .
 
-# Set entry point
-ENTRYPOINT ["uv", "run", "python",  "ingest_data.py"]
+# Set entry point using python directly from PATH
+ENTRYPOINT ["python", "ingest_data.py"]

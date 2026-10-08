@@ -30,7 +30,7 @@ parse_dates = [
 @click.command()
 @click.option("--pg-user", default="root", show_default=True, help="Postgres username")
 @click.option("--pg-password", default="root", show_default=True, help="Postgres password")
-@click.option("--pg-host", default="localhost", show_default=True, help="Postgres host")
+@click.option("--pg-host", default="pgdatabase", show_default=True, help="Postgres host service name")
 @click.option("--pg-port", default="5432", show_default=True, help="Postgres port")
 @click.option("--pg-db", default="ny_taxi", show_default=True, help="Postgres database name")
 @click.option("--chunk-size", default=100000, show_default=True, type=int, help="Number of rows per chunk")
@@ -48,12 +48,10 @@ def run(
     month,
     table_name,
 ):
-
     engine = create_engine(f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_db}")
 
     prefix = "https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow"
     url = f"{prefix}/yellow_tripdata_{year}-{month:02d}.csv.gz"
-
 
     print(f"Downloading and ingesting data from {url} in chunks of {chunk_size} rows...")
 
@@ -65,15 +63,17 @@ def run(
         chunksize=chunk_size,
     )
 
-    print(f"Successfully downloaded data from {url}. Beginning ingestion into the database...")
     print("Inserting data into the database...")
 
     first = True
     for df_chunk in tqdm(df_iter):
         if first:
-            df_chunk.head(0).to_sql(name=table_name, con=engine, if_exists="replace")
+            # Overwrite table schema and insert first chunk
+            df_chunk.to_sql(name=table_name, con=engine, if_exists="replace", index=False)
             first = False
-        df_chunk.to_sql(name=table_name, con=engine, if_exists="append")
+        else:
+            # Append remaining chunks
+            df_chunk.to_sql(name=table_name, con=engine, if_exists="append", index=False)
 
     print("Data ingestion completed successfully.")
 
