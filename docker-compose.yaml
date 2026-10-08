@@ -7,6 +7,8 @@ volumes:
     driver: local
   kestra_tmp:
     driver: local
+  pgadmin_data:
+    driver: local
 
 services:
   pgdatabase:
@@ -30,6 +32,8 @@ services:
       - PGADMIN_DEFAULT_PASSWORD=root
     ports:
       - "8085:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
     depends_on:
       pgdatabase:
         condition: service_started
